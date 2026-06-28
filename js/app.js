@@ -8,6 +8,28 @@ const view = document.getElementById('view');
 const authBox = document.getElementById('auth-box');
 let currentUser = null;
 
+window.addEventListener('error', (event) => {
+  authBox.classList.remove('hidden');
+  authBox.innerHTML = `
+    <div class="glass-card auth-card">
+      <h2>Error en AURA</h2>
+      <p class="error">${event.message}</p>
+      <p style="font-size:12px;opacity:0.7;">Archivo: ${event.filename || 'desconocido'} (línea ${event.lineno || '?'})</p>
+    </div>
+  `;
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  authBox.classList.remove('hidden');
+  authBox.innerHTML = `
+    <div class="glass-card auth-card">
+      <h2>Error de conexión en AURA</h2>
+      <p class="error">${event.reason?.message || event.reason}</p>
+      <p style="font-size:12px;opacity:0.7;">Esto suele pasar si falta una tabla en Supabase o la URL/clave es incorrecta.</p>
+    </div>
+  `;
+});
+
 // ---------- RENDER HELPERS ----------
 function el(html) {
   const t = document.createElement('template');
@@ -162,16 +184,27 @@ function setupNav() {
 
 // ---------- INIT ----------
 async function init() {
-  currentUser = await getCurrentUser();
-  if (currentUser) {
-    authBox.classList.add('hidden');
-    document.getElementById('app-nav').classList.remove('hidden');
-    setupNav();
-    renderFeed();
-  } else {
+  try {
+    currentUser = await getCurrentUser();
+    if (currentUser) {
+      authBox.classList.add('hidden');
+      document.getElementById('app-nav').classList.remove('hidden');
+      setupNav();
+      renderFeed();
+    } else {
+      authBox.classList.remove('hidden');
+      document.getElementById('app-nav').classList.add('hidden');
+      renderAuth();
+    }
+  } catch (e) {
     authBox.classList.remove('hidden');
-    document.getElementById('app-nav').classList.add('hidden');
-    renderAuth();
+    authBox.innerHTML = `
+      <div class="glass-card auth-card">
+        <h2>Error al iniciar AURA</h2>
+        <p class="error">${e.message || e}</p>
+        <p style="font-size:12px;opacity:0.7;">Revisa que la tabla "profiles" exista en Supabase y que las políticas RLS estén creadas (schema.sql).</p>
+      </div>
+    `;
   }
 }
 
